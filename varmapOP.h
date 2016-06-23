@@ -1,23 +1,59 @@
 #include <string.h>
 #include "varmap.h"
 
+void vMapStackPush (struct VarMapStack* stack) {
+  stack -> data[stack -> size] = malloc (sizeof (struct VarMap));
+  stack -> data[stack -> size] -> size = 0;
+  ++ stack -> size;
+}
+
+struct VarMap* vMapStackTop (struct VarMapStack* stack) {
+  return stack -> data[stack -> size - 1];
+}
+
+void vMapStackPop (struct VarMapStack* stack) {
+  int i;
+  for (i = 0; i < vMapStackTop (stack) -> size; ++ i) {
+    if (vMapStackTop (stack) -> closureMap[i] != NULL) {
+      free (vMapStackTop (stack) -> closureMap[i]);
+    }
+  }
+  free (vMapStackTop (stack));
+  -- stack -> size;
+}
+
+struct VarMap* vMapDup (struct VarMap* vMap) {
+  int i;
+  struct VarMap* tmp = malloc (sizeof (struct VarMap));
+  for (i = 0; i < vMap -> size; ++ i) {
+    strcpy(tmp -> varName[i], vMap -> varName[i]);
+    tmp -> type[i] = vMap -> type[i];
+    tmp -> value[i] = vMap -> value[i];
+    tmp -> funNode[i] = vMap -> funNode[i];
+  }
+  tmp -> size = vMap -> size;
+  return tmp;
+}
+
 void define (struct VarMap *vMap, char* id, int* val) {
   vMap -> value[vMap -> size] = *val;
-  vMap -> varName[vMap -> size] = strdup(id);
+  strcpy (vMap -> varName[vMap -> size], id);
   vMap -> type[vMap -> size] = 0;
+  vMap -> closureMap[vMap -> size] = NULL;
   ++ vMap -> size;
 }
 
-void defineFun (struct VarMap *vMap, char* id, struct ASTNode* fNode) {
+void defineFun (struct VarMap *vMap, char* id, struct ASTNode* fNode, struct VarMap* cMap) {
   vMap -> funNode[vMap -> size] = fNode;
-  vMap -> varName[vMap -> size] = strdup(id);
+  strcpy (vMap -> varName[vMap -> size], id);
   vMap -> type[vMap -> size] = 1;
+  vMap -> closureMap[vMap -> size] = cMap;
   ++ vMap -> size;
 }
 
 int findID (struct VarMap *vMap, char* id) {
   int i;
-  for (i = 0; i < vMap -> size; ++ i) {
+  for (i = 0; i != vMap -> size; ++ i) {
     if (strcmp (id, vMap -> varName[i]) == 0) {
       return i;
     }
@@ -25,27 +61,35 @@ int findID (struct VarMap *vMap, char* id) {
   return -1;
 }
 
-void assign (struct VarMap *vMap, char* id, int* val) {
-  int tmp = findID (vMap, id);
-  if (tmp != -1) {
-    vMap -> value[tmp] = *val;
-    vMap -> varName[vMap -> size] = strdup(id);
-    ++ vMap -> size;
-  }
-}
-
-int varValue (struct VarMap *vMap, char* id) {
-  int tmp = findID (vMap, id);
-  if (tmp != -1) {
-    return vMap -> value[tmp];
+int findValue (struct VarMapStack *stack, char* id) {
+  int tmp, i;
+  for (i = stack -> size - 1; i != -1; -- i) {
+    tmp = findID (stack -> data[i], id);
+    if (tmp != -1 && stack -> data[i] -> type[tmp] == 0) {
+      return stack -> data[i] -> value[tmp];
+    }
   }
   return 0;
 }
 
-ANode* funNode (struct VarMap *vMap, char* id) {
-  int tmp = findID (vMap, id);
-  if (tmp != -1) {
-    return vMap -> funNode[tmp];
+struct VarMap* findClosure (struct VarMapStack *stack, char* id) {
+  int tmp, i;
+  for (i = stack -> size - 1; i != -1; -- i) {
+    tmp = findID (stack -> data[i], id);
+    if (tmp != -1 && stack -> data[i] -> type[tmp] == 1) {
+      return stack -> data[i] -> closureMap[tmp];
+    }
   }
-  return 0;
+  return NULL;
+}
+
+ANode* findFun (struct VarMapStack *stack, char* id) {
+  int tmp, i;
+  for (i = stack -> size - 1; i != -1; -- i) {
+    tmp = findID (stack -> data[i], id);
+    if (tmp != -1 && stack -> data[i] -> type[tmp] == 1) {
+      return stack -> data[i] -> funNode[tmp];
+    }
+  }
+  return NULL;
 }

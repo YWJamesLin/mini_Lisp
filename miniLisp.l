@@ -35,7 +35,7 @@ fun { return FUN; }
 }
 {letter}({letter}|{digit}|-)* {
   yylval.tmpNode.type = 1;
-  yylval.tmpNode.id = strdup (yytext);
+  strcpy (yylval.tmpNode.id, yytext);
   return ID;
 }
 (#t|#f) {

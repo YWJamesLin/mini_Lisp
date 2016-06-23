@@ -32,6 +32,7 @@ void yyerror (const char*);
 %type <TNode> AND_OP
 %type <TNode> OR_OP
 %type <TNode> NOT_OP
+%type <tmpNode> DEF_STMTS
 %type <TNode> DEF_STMT
 %type <TNode> VARIABLE
 %type <TNode> FUN_EXP
@@ -75,31 +76,24 @@ void yyerror (const char*);
 
 %%
 PROGRAM : STMTS {
-          struct Stack stack;
-          stack.size = 0;
-          stack.data = malloc (sizeof(int) * 100);
+          struct Stack* stack = malloc (sizeof (struct Stack));
+          stack -> size = 0;
 
-          struct VarMap vMap;
-          vMap.size = 0;
-          vMap.type = malloc (sizeof(int) * 100);
-          vMap.value = malloc (sizeof(int) * 100);
-          vMap.varName = malloc (sizeof(char*) * 100);
-          vMap.funNode = malloc (sizeof(ANode*) * 100);
+          struct VarMapStack *vStack = malloc (sizeof (struct VarMapStack));
+          vStack -> size = 0;
+          vMapStackPush(vStack);
 
           int i;
           for(i = 0; i < $1.childSize; ++ i) {
-            evaluateTree (&stack, $1.child[i], &vMap, &vMap);
+            evaluateTree (stack, $1.child[i], vStack);
           }
           for(i = 0; i < $1.childSize; ++ i) {
             deleteTree ($1.child[i]);
           }
 
-          free (stack.data);
-
-          free (vMap.varName);
-          free (vMap.type);
-          free (vMap.value);
-          free (vMap.funNode);
+          vMapStackPop (vStack);
+          free (vStack);
+          free (stack);
         }
         ;
 STMTS : STMTS STMT {
@@ -348,6 +342,16 @@ NOT_OP : LP NOT EXP RP {
        }
        ;
 
+DEF_STMTS : DEF_STMTS DEF_STMT {
+            $$ = $1;
+            $$.child[$$.childSize] = $2;
+            ++ $$.childSize;
+          }
+          | DEF_STMT {
+            $$.child[0] = $1;
+            $$.childSize = 1;
+          }
+          ;
 DEF_STMT : LP DEFINE VARIABLE EXP RP {
            $$ = malloc (sizeof (ANode));
            $$ -> type = 60;
@@ -359,7 +363,7 @@ DEF_STMT : LP DEFINE VARIABLE EXP RP {
 VARIABLE : ID {
            $$ = malloc (sizeof (ANode));
            $$ -> type = 1;
-           $$ -> id =  strdup ($1.id);
+           strcpy ($$ -> id, $1.id);
            $$ -> child[0] = NULL;
            $$ -> childSize = 0;
          }
@@ -395,7 +399,7 @@ FUN_IDs : LP RP {
           $$ = $1;
           $$.child[$$.childSize] = malloc (sizeof(ANode));
           $$.child[$$.childSize] -> type = 1;
-          $$.child[$$.childSize] -> id =  strdup ($2.id);
+          strcpy ($$.child[$$.childSize] -> id, $2.id);
           $$.child[$$.childSize] -> child[0] = NULL;
           $$.child[$$.childSize] -> childSize = 0;
           ++ $$.childSize;
@@ -403,14 +407,34 @@ FUN_IDs : LP RP {
         | ID {
            $$.child[0] = malloc (sizeof(ANode));
            $$.child[0] -> type = 1;
-           $$.child[0] -> id =  strdup ($1.id);
+           strcpy ($$.child[0] -> id, $1.id);
            $$.child[0] -> child[0] = NULL;
            $$.child[0] -> childSize = 0;
            $$.childSize = 1;
         }
         ;
 FUN_BODY : EXP {
-           $$ = $1;
+           $$ = malloc (sizeof (ANode));
+           $$ -> type = 75;
+           $$ -> childSize = 2;
+
+           $$ -> child[0] = NULL;
+           $$ -> child[1] = $1;
+         }
+         |DEF_STMTS EXP {
+           int i;
+           $$ = malloc (sizeof (ANode));
+           $$ -> type = 75;
+           $$ -> childSize = 2;
+
+           $$ -> child[0] = malloc (sizeof (ANode));
+           for (i = 0; i < $1.childSize; ++ i) {
+             $$ -> child[0] -> child[i] = $1.child[i];
+           }
+           $$ -> child[0] -> type = 76;
+           $$ -> child[0] -> childSize = $1.childSize;
+ 
+           $$ -> child[1] = $2;
          }
          ;
 FUN_CALL : LP FUN_EXP RP {
@@ -472,7 +496,7 @@ PARAM : EXP {
 FUN_NAME : ID {
            $$ = malloc (sizeof(ANode));
            $$ -> type = 1;
-           $$ -> id =  strdup ($1.id);
+           strcpy ($$ -> id, $1.id);
            $$ -> child[0] = NULL;
            $$ -> childSize = 0;
          }

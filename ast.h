@@ -29,6 +29,8 @@ typedef struct ASTNode {
    * 72 : func_call
    * 73 : func_param
    * 74 : named function
+   * 75 : fun_body
+   * 76 : fun_def
    */
   int type;
 
@@ -36,6 +38,6 @@ typedef struct ASTNode {
   struct ASTNode* child[10];
 
   int val;
-  char *id;
+  char id[20];
 
 }ANode;
