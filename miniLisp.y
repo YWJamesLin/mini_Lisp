@@ -79,14 +79,20 @@ PROGRAM : STMTS {
           struct Stack* stack = malloc (sizeof (struct Stack));
           stack -> size = 0;
 
+          char tmpMessage[50];
           struct VarMapStack *vStack = malloc (sizeof (struct VarMapStack));
           vStack -> size = 0;
           vMapStackPush(vStack);
 
-          int i;
+          int i, tmp;
           for(i = 0; i < $1.childSize; ++ i) {
-            evaluateTree (stack, $1.child[i], vStack);
+            tmp = evaluateTree (stack, $1.child[i], vStack, tmpMessage);
           }
+
+          if ( ! tmp) {
+            yyerror (tmpMessage); 
+          }
+
           for(i = 0; i < $1.childSize; ++ i) {
             deleteTree ($1.child[i]);
           }
@@ -528,7 +534,7 @@ void yyerror (const char* message) {
   if (strcmp (message, "syntax error") == 0) {
     puts ("Syntax Error");
   } else {
-    puts ("fuck");
+    puts (message);
   }
 }
 

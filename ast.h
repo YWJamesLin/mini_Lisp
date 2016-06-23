@@ -12,6 +12,7 @@ typedef struct ASTNode {
    * 33 : multiply
    * 34 : divide
    * 35 : modulus
+   *
    * 36 : greater
    * 37 : smaller
    * 38 : equal
