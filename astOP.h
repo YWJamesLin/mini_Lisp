@@ -19,8 +19,7 @@ void deleteTree (ANode* head) {
 }
   
 void handleMessage (char* message, int tType, int fType) {
-  char messages[3][20] = { "number", "boolean", "function" };
-  sprintf (message, "Expect '%s' but got '%s'.", messages[tType], messages[fType]);
+  sprintf (message, "Type error!");
 }
 
 
@@ -218,7 +217,8 @@ int evaluateTree (struct Stack* stack, struct ASTNode* head, struct VarMapStack 
       if (head -> child[1] -> type == 70) {
         defineFun (vMapStackTop(vStack), head -> child[0] -> id, head -> child[1], NULL);
       } else {
-        evaluateTree (stack, head -> child[1], vStack, message);
+        tmp = evaluateTree (stack, head -> child[1], vStack, message);
+        if ( ! tmp) { return 0; }
         if (stackTopType (stack) == 2) {
           tmpNode = stackTopFun (stack);
           tmpMap = stackTopMap (stack);
